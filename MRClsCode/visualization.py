@@ -1,6 +1,20 @@
 import cv2
 import numpy as np
-
+import os
+import numpy as np
+import pandas as pd
+import nibabel as nib
+import matplotlib.pyplot as plt
+import SimpleITK as sitk
+from models.SENet import Model
+from utils.img_processing import get_tumor,mkdir
+import torch
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset, DataLoader
+from models.SENet import Model_path_mr,Model
+from lifelines.utils import concordance_index
+import torchtuples as tt
+from utils.img_processing import convert_path,normalize_min_max
 
 class ActivationsAndGradients:
     """ Class for extracting activations and
@@ -99,7 +113,6 @@ class GradCAM:
         target_size = self.get_target_width_height(input_tensor)
 
         cam_per_target_layer = []
-        # Loop over the saliency image from every layer
 
         for layer_activations, layer_grads in zip(activations_list, grads_list):
             cam = self.get_cam_image(layer_activations, layer_grads)
@@ -132,8 +145,6 @@ class GradCAM:
 
         if self.cuda:
             input_tensor = input_tensor.cuda()
-
-        # 正向传播得到网络输出logits(未经过softmax)
         output = self.activations_and_grads(input_tensor)
         if isinstance(target_category, int):
             target_category = [target_category] * input_tensor.size(0)
@@ -147,16 +158,6 @@ class GradCAM:
         self.model.zero_grad()
         loss = self.get_loss(output, target_category)
         loss.backward(retain_graph=True)
-
-        # In most of the saliency attribution papers, the saliency is
-        # computed with a single target layer.
-        # Commonly it is the last convolutional layer.
-        # Here we support passing a list with multiple target layers.
-        # It will compute the saliency image for every image,
-        # and then aggregate them (with a default mean aggregation).
-        # This gives you more flexibility in case you just want to
-        # use all conv layers for example, all Batchnorm layers,
-        # or something else.
         cam_per_layer = self.compute_cam_per_layer(input_tensor)
         return self.aggregate_multi_layers(cam_per_layer)
 

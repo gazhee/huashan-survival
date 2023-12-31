@@ -100,9 +100,9 @@ class ResidualBlock(nn.Module):
 
 
 
-class Model(nn.Module):
+class Model_mr(nn.Module):
     def __init__(self,num_classes=3):
-        super(Model,self).__init__()
+        super(Model_mr,self).__init__()
         # conv1
         self.conv1 = nn.Conv2d(in_channels= 6,out_channels=64,kernel_size=7,stride=2,padding=3)
         self.bn1 = nn.BatchNorm2d(64)
@@ -225,12 +225,3 @@ class Model_path_mr(nn.Module):
         x = self.bn(x)
         return x
 
-    
-if __name__ == '__main__':
-    model =Model_path_mr()
-
-    # 定义输入 [N,C,W,D]
-    input = torch.ones([16,6,128,128])
-    clin = torch.ones([16,1024])
-    output = model(input,clin)
-    print("output.shape = ",output.shape)

@@ -1,0 +1,89 @@
+---
+title: "Evaluate ROC"
+output: html_notebook
+---
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(foreign)
+library(survival)
+library(rms)
+library(survival)
+library(survminer)
+library(dplyr)
+library(timeROC)
+```
+
+## data -- Table containing survival time, survival status, and classification labels
+
+
+# NomoGram
+## Output is a nomogram
+```{r}
+f <- cph(Surv(survival_month,status_dead) ~ risk_score+ WHO + IDH + Gender,data = data_train,x=TRUE,y=TRUE,surv = TRUE)
+
+survival<-Survival(f)
+survival1 <- function(x)survival(12,x)
+survival2<- function(x)survival(24,x)
+survival3<- function(x)survival(36,x)
+nom <- nomogram(f, fun=list(survival1,survival2,survival3),
+                fun.at = c( 0.6,0.8,0.9,0.96, 0.99),
+                conf.int = F,
+                maxscale = 100,
+                funlabel = c('1 year survival','2 year survival','3 year survival'),
+                lp = F)
+plot(nom,xfrac=.6)
+```
+
+
+# Time Roc
+## Output is ROC curves for each prediction point.
+```{r}
+result <- with(data, timeROC(T=survival_month,
+                              delta=status_dead,
+                               marker= risk_score,
+                              cause=1,
+                              times=c(12,24,36),
+                              iid = TRUE
+                              ))
+dat = data.frame(fpr = as.numeric(result$FP),
+                 tpr = as.numeric(result$TP),
+            time = rep(as.factor(c(12,24,36)),each = nrow(result$TP)))
+library(ggplot2)
+p =  ggplot() + geom_line(data = dat,aes(x = fpr, y = tpr,color = time),size = 1.5) + 
+    scale_color_manual(name = NULL,values = c("#f9cc52", "#e18283", "#0d898a"),
+                       labels = paste0("AUC of ",c(1,2,3),"-years survival: ",
+                                       format(round(result$AUC,3),nsmall = 2)))+
+    geom_line(aes(x=c(0,1.05),y=c(0,1)),color = "grey")+
+    theme_bw()+
+    ggtitle("SVM-SE-DLFE") +
+    theme(plot.title = element_text(size = 15, face = "bold"))+ theme( panel.grid = element_blank(),
+          legend.background = element_rect(linetype = 2, size = 0.2, colour = "black"),
+          legend.position = c(0.67,0.11),
+          legend.text = element_text(size = 14),
+          plot.title = element_text(hjust = 0.5))+
+    scale_x_continuous(expand = c(0.015,0.015))+
+    scale_y_continuous(expand = c(0.015,0.015))+
+    theme(axis.text.x = element_text(size = 12))+
+    theme(axis.text.y = element_text(size = 12))+
+    theme(axis.title = element_text(size = 15)) +
+    labs(x = "1 - Specificity",
+         y = "Sensitivity")+
+    coord_fixed()
+
+```
+
+```{r}
+result <- with(data, timeROC(T=survival_month,
+                              delta=status_dead,
+                               marker=risk_score,
+                              cause=1,
+                              times=c(12,15,18,20,22,24,26,28,30,32,34, 36),
+                              iid = TRUE
+                              ))
+
+result$AUC
+```
